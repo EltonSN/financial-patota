@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { supabase } from './supabaseClient';
 import { PlusCircle, List, PiggyBank, Receipt, Calendar, Users, CheckCircle2, ChevronDown, ChevronUp, X, Copy, LogOut } from 'lucide-react';
 
 // Membros iniciais (podem ser alterados no código se desejar)
@@ -19,6 +20,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [members, setMembers] = useState(INITIAL_MEMBERS);
   const [expenses, setExpenses] = useState([]);
+  const [loading, setLoading] = useState(true);
   
   // States para o formulário de nova despesa
   const [title, setTitle] = useState('');
@@ -33,20 +35,38 @@ export default function App() {
   const [settlementAmount, setSettlementAmount] = useState(''); // Novo state para Pagamento Parcial/Total
   const [copiedPix, setCopiedPix] = useState(false);
 
-  // Carregar dados salvos no navegador ao iniciar
+  // Carregar dados do Supabase ao iniciar
   useEffect(() => {
-    const saved = localStorage.getItem('patota_finances');
-    if (saved) {
-      setExpenses(JSON.parse(saved));
-    }
+    const fetchExpenses = async () => {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('expenses')
+        .select('*')
+        .order('date_added', { ascending: true });
+
+      if (error) {
+        console.error('Erro ao carregar despesas:', error.message);
+      } else {
+        // Mapear campos snake_case do banco para camelCase do app
+        const mapped = data.map(row => ({
+          id: row.id,
+          title: row.title,
+          amount: parseFloat(row.amount),
+          payer: row.payer,
+          dueDate: row.due_date || '',
+          involved: row.involved,
+          dateAdded: row.date_added,
+          isSettlement: row.is_settlement,
+        }));
+        setExpenses(mapped);
+      }
+      setLoading(false);
+    };
+
+    fetchExpenses();
   }, []);
 
-  // Salvar sempre que houver nova despesa
-  useEffect(() => {
-    localStorage.setItem('patota_finances', JSON.stringify(expenses));
-  }, [expenses]);
-
-  const handleAddExpense = (e) => {
+  const handleAddExpense = async (e) => {
     e.preventDefault();
     if (!title || !amount || !payer || involved.length === 0) {
       alert('Preencha os campos obrigatórios e selecione pelo menos um envolvido.');
@@ -58,12 +78,31 @@ export default function App() {
       title,
       amount: parseFloat(amount),
       payer,
-      dueDate,
+      due_date: dueDate || null,
       involved,
-      dateAdded: new Date().toISOString()
+      date_added: new Date().toISOString(),
+      is_settlement: false,
     };
 
-    setExpenses([...expenses, newExpense]);
+    const { error } = await supabase.from('expenses').insert([newExpense]);
+
+    if (error) {
+      console.error('Erro ao salvar despesa:', error.message);
+      alert('Erro ao salvar despesa. Tente novamente.');
+      return;
+    }
+
+    // Atualizar estado local com formato camelCase
+    setExpenses([...expenses, {
+      id: newExpense.id,
+      title: newExpense.title,
+      amount: newExpense.amount,
+      payer: newExpense.payer,
+      dueDate: newExpense.due_date || '',
+      involved: newExpense.involved,
+      dateAdded: newExpense.date_added,
+      isSettlement: false,
+    }]);
     
     // Resetar form
     setTitle('');
@@ -81,13 +120,19 @@ export default function App() {
     }
   };
 
-  const deleteExpense = (id) => {
+  const deleteExpense = async (id) => {
     if(confirm('Tem certeza que deseja apagar este registro?')) {
+      const { error } = await supabase.from('expenses').delete().eq('id', id);
+      if (error) {
+        console.error('Erro ao deletar despesa:', error.message);
+        alert('Erro ao deletar. Tente novamente.');
+        return;
+      }
       setExpenses(expenses.filter(e => e.id !== id));
     }
   };
 
-  const confirmSettlement = () => {
+  const confirmSettlement = async () => {
     if (pendingSettlement && settlementAmount) {
       const { from, to } = pendingSettlement;
       const parsedAmount = parseFloat(settlementAmount);
@@ -101,13 +146,31 @@ export default function App() {
         id: Date.now().toString(),
         title: `Pagamento de Dívida`,
         amount: parsedAmount,
-        payer: from, // Quem pagou a dívida
-        dueDate: '',
-        involved: [to], // Quem recebeu (para abater a dívida com esse valor)
-        dateAdded: new Date().toISOString(),
-        isSettlement: true
+        payer: from,
+        due_date: null,
+        involved: [to],
+        date_added: new Date().toISOString(),
+        is_settlement: true,
       };
-      setExpenses([...expenses, settlement]);
+
+      const { error } = await supabase.from('expenses').insert([settlement]);
+
+      if (error) {
+        console.error('Erro ao registrar pagamento:', error.message);
+        alert('Erro ao registrar pagamento. Tente novamente.');
+        return;
+      }
+
+      setExpenses([...expenses, {
+        id: settlement.id,
+        title: settlement.title,
+        amount: settlement.amount,
+        payer: settlement.payer,
+        dueDate: '',
+        involved: settlement.involved,
+        dateAdded: settlement.date_added,
+        isSettlement: true,
+      }]);
       setPendingSettlement(null);
       setSettlementAmount('');
     }
@@ -199,6 +262,16 @@ export default function App() {
     if (currentUser === 'Geral') return debts;
     return debts.filter(d => d.from === currentUser || d.to === currentUser);
   }, [debts, currentUser]);
+
+  // View: LOADING
+  if (loading) {
+    return (
+      <div className="fixed inset-0 bg-[#0a0a0f] z-50 flex flex-col items-center justify-center gap-4">
+        <div className="w-16 h-16 rounded-full border-4 border-purple-500/20 border-t-cyan-400 animate-spin shadow-[0_0_20px_rgba(34,211,238,0.3)]"></div>
+        <p className="text-gray-400 text-sm font-medium tracking-widest uppercase animate-pulse">Carregando dados...</p>
+      </div>
+    );
+  }
 
   // View: SELECIONAR USUÁRIO
   if (!currentUser) {
