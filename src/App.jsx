@@ -8,11 +8,11 @@ const INITIAL_MEMBERS = ['Elton', 'Geo', 'Carol', 'Slash', 'Filipe', 'Yuri'];
 // Chaves Pix (deixando algumas como exemplo pix12345 para alteração futura)
 const PIX_KEYS = {
   Elton: 'elton_sn@outlook.com',
-  Geo: 'pix12345',
-  Carol: 'pix12345',
-  Slash: 'pix12345',
-  Filipe: 'pix12345',
-  Yuri: 'pix12345'
+  Geo: '09613956646',
+  Carol: 'caarolsilva34.cs@gmail.com',
+  Slash: '15805376695',
+  Filipe: '15613830665',
+  Yuri: 'tá sem pix'
 };
 
 export default function App() {
@@ -25,7 +25,17 @@ export default function App() {
   // States para o formulário de nova despesa
   const [title, setTitle] = useState('');
   const [amount, setAmount] = useState('');
-  const [payer, setPayer] = useState(INITIAL_MEMBERS[0]);
+  const [payer, setPayer] = useState(() => {
+    const user = localStorage.getItem('patota_user');
+    return (user && INITIAL_MEMBERS.includes(user)) ? user : INITIAL_MEMBERS[0];
+  });
+
+  // Garante que se o usuário mudar de perfil na mesma sessão, o campo atualize
+  useEffect(() => {
+    if (currentUser && members.includes(currentUser)) {
+      setPayer(currentUser);
+    }
+  }, [currentUser, members]);
   const [dueDate, setDueDate] = useState('');
   const [involved, setInvolved] = useState([...INITIAL_MEMBERS]); // Todos marcados por padrão
 
@@ -109,6 +119,7 @@ export default function App() {
     setAmount('');
     setDueDate('');
     setInvolved([...members]);
+    setPayer((currentUser && members.includes(currentUser)) ? currentUser : members[0]);
     setActiveTab('dashboard');
   };
 
@@ -176,10 +187,10 @@ export default function App() {
     }
   };
 
-  const handleCopyPix = (pix) => {
+  const handleCopyPix = (pix, debtId) => {
     navigator.clipboard.writeText(pix);
-    setCopiedPix(true);
-    setTimeout(() => setCopiedPix(false), 2000);
+    setCopiedPix(debtId);
+    setTimeout(() => setCopiedPix(null), 2000);
   };
 
   const handleOpenSettlement = (debt, e) => {
@@ -278,10 +289,10 @@ export default function App() {
     return (
       <div className="fixed inset-0 bg-[#0a0a0f] z-50 flex items-center justify-center p-4 selection:bg-pink-500 selection:text-white">
         <div className="bg-black/50 backdrop-blur-xl border border-purple-500/30 w-full max-w-sm rounded-[2rem] p-6 shadow-[0_0_40px_rgba(168,85,247,0.15)] animate-in zoom-in-95 duration-300">
-          <div className="text-center mb-8">
-            <div className="w-16 h-16 mx-auto rounded-full overflow-hidden border-2 border-cyan-400 shadow-[0_0_15px_#00ffff,inset_0_0_10px_#00ffff] bg-gray-900 flex items-center justify-center mb-4">
+          <div className="text-center mb-4">
+            <div className="w-32 h-32 mx-auto rounded-full overflow-hidden border-2 border-cyan-400 shadow-[0_0_15px_#00ffff,inset_0_0_10px_#00ffff] bg-gray-900 flex items-center justify-center mb-4">
               <img src="img/logo.png" alt="Logo" className="w-full h-full object-cover" onError={(e) => { e.target.style.display='none'; e.target.nextSibling.style.display='block'; }} />
-              <span className="text-2xl font-black text-pink-500 hidden drop-shadow-[0_0_5px_#ff007f]">P</span>
+              <span className="text-4xl font-black text-pink-500 hidden drop-shadow-[0_0_5px_#ff007f]">P</span>
             </div>
             <h2 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-pink-500 via-purple-500 to-cyan-400">Quem é você?</h2>
             <p className="text-gray-400 text-sm mt-2">Selecione seu perfil para visualizar apenas as suas contas.</p>
@@ -364,13 +375,13 @@ export default function App() {
       <header className="bg-black/50 backdrop-blur-md border-b border-purple-500/30 sticky top-0 z-10">
         <div className="max-w-md mx-auto p-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="relative w-10 h-10 rounded-full overflow-hidden border-2 border-cyan-400 shadow-[0_0_15px_#00ffff,inset_0_0_10px_#00ffff] bg-gray-900 flex items-center justify-center">
+            <div className="relative w-14 h-14 rounded-full overflow-hidden border-2 border-cyan-400 shadow-[0_0_9px_#00ffff,inset_0_0_9px_#00ffff] bg-gray-900 flex items-center justify-center">
               <img src="img/logo.png" alt="Logo" className="w-full h-full object-cover" onError={(e) => { e.target.style.display='none'; e.target.nextSibling.style.display='block'; }} />
-              <span className="text-lg font-black text-pink-500 hidden drop-shadow-[0_0_5px_#ff007f]">P</span>
+              <span className="text-xl font-black text-pink-500 hidden drop-shadow-[0_0_5px_#ff007f]">P</span>
             </div>
             <div>
-              <h1 className="text-lg font-black uppercase tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-pink-500 via-purple-500 to-cyan-400 leading-tight">
-                Patota
+              <h1 className="text-lg font-black uppercase tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-red-500 via-purple-500 to-cyan-400 leading-tight">
+                Financeiro Patota
               </h1>
               <p className="text-[10px] text-gray-500 flex items-center gap-1 font-medium">
                 <Users className="w-3 h-3" /> Acesso: <span className="text-cyan-400">{currentUser}</span>
@@ -425,9 +436,9 @@ export default function App() {
                         className="flex items-center justify-between cursor-pointer"
                         onClick={() => setActiveCardId(isExpanded ? null : debt.id)}
                       >
-                        <div className="flex flex-col">
+                        <div className="flex items-center gap-2">
                           <span className="text-red-400 font-bold text-lg leading-tight">{debt.from}</span>
-                          <span className="text-[11px] text-gray-500 uppercase font-bold tracking-wider my-[2px]">deve a</span>
+                          <span className="text-[11px] text-gray-500 font-bold tracking-wider">Deve a</span>
                           <span className="text-green-400 font-bold text-lg leading-tight">{debt.to}</span>
                         </div>
                         <div className="text-right flex flex-col items-end">
@@ -487,7 +498,7 @@ export default function App() {
                             )}
 
                             {/* Informação Pix */}
-                            <div className={`border rounded-xl p-3 flex flex-col justify-center items-center relative overflow-hidden group ${copiedPix ? 'bg-green-500/20 border-green-500/40' : 'bg-cyan-500/10 border-cyan-500/30'} ${debt.maxDueDate ? 'flex-1' : 'w-full'}`}>
+                            <div className={`border rounded-xl p-3 flex flex-col justify-center items-center relative overflow-hidden group ${copiedPix === debt.id ? 'bg-green-500/20 border-green-500/40' : 'bg-cyan-500/10 border-cyan-500/30'} ${debt.maxDueDate ? 'flex-1' : 'w-full'}`}>
                                <div className="text-[10px] text-gray-400 uppercase font-bold mb-1 flex items-center gap-1">
                                  Chave PIX ({debt.to})
                                </div>
@@ -496,11 +507,11 @@ export default function App() {
                                </span>
                                
                                <button 
-                                 onClick={() => handleCopyPix(PIX_KEYS[debt.to])}
-                                 className="absolute inset-0 bg-cyan-900/80 backdrop-blur-sm flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity font-bold text-cyan-100 text-sm"
+                                 onClick={(e) => { e.stopPropagation(); handleCopyPix(PIX_KEYS[debt.to], debt.id); }}
+                                 className={`absolute inset-0 backdrop-blur-sm flex items-center justify-center gap-2 transition-all font-bold text-sm ${copiedPix === debt.id ? 'opacity-100 bg-green-600/90 text-white' : 'opacity-0 group-hover:opacity-100 bg-cyan-900/80 text-cyan-100'}`}
                                >
-                                 {copiedPix ? <CheckCircle2 className="w-5 h-5 text-green-400"/> : <Copy className="w-5 h-5"/>}
-                                 {copiedPix ? 'Copiado!' : 'Copiar'}
+                                 {copiedPix === debt.id ? <CheckCircle2 className="w-5 h-5 text-white"/> : <Copy className="w-5 h-5"/>}
+                                 {copiedPix === debt.id ? 'Chave Copiada!' : 'Copiar'}
                                </button>
                             </div>
                           </div>
@@ -545,7 +556,7 @@ export default function App() {
                   type="text" required
                   value={title} onChange={(e) => setTitle(e.target.value)}
                   className="w-full bg-black/50 border border-purple-500/30 rounded-xl py-3 px-4 text-white focus:outline-none focus:border-purple-400 focus:ring-1 focus:ring-purple-400/50 transition-all placeholder:text-gray-700"
-                  placeholder="Ex: Combo de Vodka, Ingressos..."
+                  placeholder="Ex: Fardo de breja, aquela questão..."
                 />
               </div>
 
@@ -563,7 +574,7 @@ export default function App() {
 
                 {/* Data Limite */}
                 <div>
-                  <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Pagar até (Opcional)</label>
+                  <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Pagar até</label>
                   <input 
                     type="date"
                     value={dueDate} onChange={(e) => setDueDate(e.target.value)}
