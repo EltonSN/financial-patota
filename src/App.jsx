@@ -2,18 +2,32 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from './supabaseClient';
 import { PlusCircle, List, PiggyBank, Receipt, Calendar, Users, CheckCircle2, ChevronDown, ChevronUp, X, Copy, LogOut } from 'lucide-react';
 
-// Membros iniciais (podem ser alterados no código se desejar)
-const INITIAL_MEMBERS = ['Elton', 'Geo', 'Carol', 'Slash', 'Filipe', 'Yuri'];
+// Membros iniciais configurados via .env
+const envMembers = import.meta.env.VITE_MEMBERS;
+const INITIAL_MEMBERS = envMembers 
+  ? envMembers.split(',').map(m => m.trim())
+  : ['Elton', 'Geo', 'Carol', 'Slash', 'Filipe', 'Yuri'];
 
-// Chaves Pix (deixando algumas como exemplo pix12345 para alteração futura)
-const PIX_KEYS = {
+// Chaves Pix configuradas via .env usando JSON
+const envPixKeys = import.meta.env.VITE_PIX_KEYS;
+let PIX_KEYS = {
   Elton: 'elton_sn@outlook.com',
   Geo: '09613956646',
   Carol: 'caarolsilva34.cs@gmail.com',
   Slash: '15805376695',
   Filipe: '15613830665',
-  Yuri: 'tá sem pix'
+  Yuri: 'tá sem pix',
+  Fernando: '15613830665',
+  Luiza: 'sem pix',
 };
+
+if (envPixKeys) {
+  try {
+    PIX_KEYS = JSON.parse(envPixKeys);
+  } catch (error) {
+    console.error('Erro ao processar as chaves PIX do .env:', error);
+  }
+}
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState(() => localStorage.getItem('patota_user') || '');
