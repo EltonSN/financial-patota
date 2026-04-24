@@ -17,7 +17,7 @@ let PIX_KEYS = {
   Slash: '15805376695',
   Filipe: '15613830665',
   Yuri: 'tá sem pix',
-  Fernando: '15613830665',
+  Fernando: '09881731666',
   Luiza: 'sem pix',
 };
 
